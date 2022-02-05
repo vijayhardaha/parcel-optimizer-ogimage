@@ -37,34 +37,42 @@ const patchMetaToAbsolute = (metaHTML, baseUrl) => {
   );
 };
 
+/**
+ * Helper functions to loop for multiple replace.
+ */
+const replaceUrls = (contents, urlProperty, imageProperty) => {
+  const urlTag = findMeta(contents, 'property', urlProperty);
+  if (!urlTag) {
+    return contents;
+  }
+
+  const metaUrl = getMetaTagContent(urlTag);
+
+  // Fetch original meta
+  const imageMeta = findMeta(contents, 'property', imageProperty);
+  if (imageMeta) {
+    return contents.replace(imageMeta, patchMetaToAbsolute(imageMeta, metaUrl));
+  }
+
+  return contents;
+};
+
 // Exports.
 export default new Optimizer({
   async optimize({
-
     contents,
     map,
     options,
   }) {
-    const ogUrlTag = findMeta(contents, 'property', 'og:url');
-
     if (options.hot) {
       return { contents, map };
     }
-    if (!ogUrlTag) {
-      return { contents, map };
-    }
 
-    const ogUrl = getMetaTagContent(ogUrlTag);
+    let replacedContents = contents;
 
-    // Fetch original meta
-    const opengraphImageMeta = findMeta(contents, 'property', 'og:image');
-    if (opengraphImageMeta) {
-      return {
-        contents: contents.replace(
-          opengraphImageMeta,
-          patchMetaToAbsolute(opengraphImageMeta, ogUrl),
-        ),
-      };
-    }
+    replacedContents = replaceUrls(replacedContents, 'og:url', 'og:image');
+    replacedContents = replaceUrls(replacedContents, 'twitter:url', 'twitter:image');
+
+    return { contents: replacedContents, map };
   },
 });
